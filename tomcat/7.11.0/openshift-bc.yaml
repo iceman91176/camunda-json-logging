@@ -1,38 +1,93 @@
-apiVersion: build.openshift.io/v1
-kind: BuildConfig
+---
+apiVersion: v1
+kind: Template
 metadata:
   annotations:
-  name: camunda-json-logging-7.11.0
-spec:
-  failedBuildsHistoryLimit: 5
-  nodeSelector: null
-  output:
-    pushSecret:
-      name: nexus-dev
-    to:
-      kind: DockerImage
-      name: 'pub-registry.dev.witcom.services/witcom/camunda-json-logging:7.11.0'
-  postCommit: {}
-  resources: {}
-  runPolicy: Serial
-  source:
-    contextDir: /tomcat/7.11.0/docker
-    git:
-      uri: 'https://github.com/iceman91176/container-toolbox'
-    type: Git
-  strategy:
-    dockerStrategy:
-      noCache: true
-    type: Docker
-  successfulBuildsHistoryLimit: 5
-  triggers:
-    - github:
-        secret: 084vV8mJTy2RJemdRts0D
-      type: GitHub
-    - generic:
-        secret: pm5lN5VmXLBjwRItWux9
-      type: Generic
-    - type: ConfigChange
-    - imageChange:
-      type: ImageChange
-status:
+    description: "Builder Camunda with JSON Logging"
+    tags: "camunda"
+    template.openshift.io/provider-display-name: WiTCOM
+  name: camunda-json-logging
+objects:
+-
+  apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+    name: camunda-json-logging-${CAMUNDA_VERSION}
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      pushSecret:
+        name: ${PUSH_SECRET}
+      to:
+        kind: DockerImage
+        name: "${TARGET_REGISTRY}/${TARGET_REGISTRY_ORG}/camunda-json-logging:${CAMUNDA_VERSION}"
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      contextDir: /tomcat/${CAMUNDA_VERSION}/docker
+      git:
+        uri: "${SOURCE_REPOSITORY_URL}"
+      type: Git
+    strategy:
+      dockerStrategy:
+        noCache: true
+      type: Docker
+    successfulBuildsHistoryLimit: 5
+    triggers:
+      - github:
+          secret: "${GITHUB_WEBHOOK_SECRET}"
+        type: GitHub
+      - generic:
+          secret: "${GITHUB_WEBHOOK_SECRET}"
+        type: Generic
+      - type: ConfigChange
+      - imageChange:
+        type: ImageChange
+  status:
+parameters:
+  -
+    description: "Camunda Version"
+    displayName: "Application Name"
+    name: CAMUNDA_VERSION
+    required: true
+    value: 7.11.0
+  -
+    description: "The source URL"
+    displayName: "Source URL"
+    name: SOURCE_REPOSITORY_URL
+    required: true
+    value: https://github.com/iceman91176/camunda-json-logging
+  -
+    description: "The branch name for the application"
+    displayName: "Source Branch"
+    name: SOURCE_REPOSITORY_REF
+    required: true
+    value: master
+  -
+    description: "Target Docker-Registry"
+    displayName: "URL of target registry"
+    name: TARGET_REGISTRY
+    required: true
+    value: pub-registry.dev.witcom.services
+  -
+    description: "Registry org"
+    displayName: "Registy org"
+    name: TARGET_REGISTRY_ORG
+    required: true
+    value: witcom
+  -
+    description: "Registry push secret"
+    displayName: "Name of the secret used to push to registry (must exist)"
+    name: PUSH_SECRET
+    required: true
+    value: nexus-dev
+  -
+    description: "A secret string used to configure the GitHub webhook."
+    displayName: "GitHub Webhook Secret"
+    from: "[a-zA-Z0-9]{40}"
+    generate: expression
+    name: GITHUB_WEBHOOK_SECRET
+    required: true
